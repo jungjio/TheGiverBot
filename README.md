@@ -1,8 +1,14 @@
 # TheGiverBot
 
+
+This is only for mac users currently, if I get more support or if anyone is willing to upload an exe for it, I'll have it linked here.
+
+You can donate at Venmo:@Josh-Jung-1
+                  Paypal: jungjio2@yahoo.com
+
 Bot needs a few things to get started up.
   One of which is a google driver.
   Download link: https://sites.google.com/a/chromium.org/chromedriver/getting-started
-
-  Essentially allows you to work with software in the code.
+  
+  Essentially allows you to work with the software in the code.
   
