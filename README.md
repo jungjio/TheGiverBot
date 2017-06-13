@@ -11,6 +11,5 @@ Bot needs a few things to get started up.
   Download link: https://sites.google.com/a/chromium.org/chromedriver/getting-started
   
   Leave the chrome driver inside your downloads folder
-  
   Essentially allows you to work with the software in the code.
   
