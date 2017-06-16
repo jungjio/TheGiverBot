@@ -3,8 +3,7 @@
 
 This is only for mac users currently, if I get more support or if anyone is willing to upload an exe for it, I'll have it linked here.
 
-You can donate at Venmo:@Josh-Jung-1
-                  Paypal: thegiverbot@gmail.com
+You can donate Paypal: thegiverbot@gmail.com
 
 Bot needs a few things to get started up.
   One of which is a google driver.
