@@ -1,24 +1,40 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
-import urllib2
+
+#THING TO CHANGE IN THIS BOT
+# MAKE IT FASTER
+# CHANGE THE WHILE LOOPS TO CHECK FOR RESPONSE = 200
+# GUI BUILDING
+
+import urllib3
 import re
 import webbrowser
 import requests
 import sys
-import cookielib
+# import cookielib
 import timeit
 import time
 import Tkinter as tk
 import os
-import pwd
+import json
+import codecs
+import datetime
+import multiprocessing
+import tkMessageBox as messagebox
 from selenium import webdriver
+import selenium.webdriver as webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
-#from lxml import html
+import selenium.webdriver.support.ui as ui
+from time import sleep
+from time import sleep
+from random import randint
+import Cookie
 from bs4 import BeautifulSoup
-from urlparse import urlparse
 from collections import OrderedDict
+
+
 
 utf1 = '%E2%9C%93' #how to send request to atc
 commit1 = 'add to cart'
@@ -40,9 +56,10 @@ SUPREMESHORTS= 'http://www.supremenewyork.com/shop/all/shorts'
 SUPREMEHATS = 'http://www.supremenewyork.com/shop/all/hats'
 SUPREMEACCESSORIES = 'http://www.supremenewyork.com/shop/all/accessories'
 SUPREMETSHIRTS = 'http://www.supremenewyork.com/shop/all/t-shirts'
-SUPREMECHECKOUT = 'https://www.supremenewyork.com/checkout.js'
+SUPREMECHECKOUT = 'https://www.supremenewyork.com/checkout.json'
 SUPREMESHOES = 'http://www.supremenewyork.com/shop/all/shoes'
-
+SUPREMEBAGS = 'http://www.supremenewyork.com/shop/bags'
+SUPREMEEMAIL = 'https://www.supremenewyork.com/store_credits/verify?email='
 
 
 
@@ -78,95 +95,218 @@ def Categories(wyw): #category
     if wyw == "shoes":
         supreme = SUPREMESHOES
         return supreme
+    if wyw == 'bags':
+        supreme = SUPREMEBAGS
+        return supreme
+
+########       Old Item Finder          #########################################################################################################################################################################
+
 
 def keywordhunter(cop, keyword, colorway): #finds keyword and color returns the final link
     final1 = str("")
     final2 = str("") #you need this for keyword searcher
-    #link = cop.find_all("article")
-    name_box = cop.find_all('p', attrs={'p': 'href'})
-    for links in cop.find_all("h1"): # what the thingy
-        if keyword in links.text:
-            final1 = final1 + str(links)
 
-    for links in cop.find_all("p"): # colour
-        if colorwave in links.text:
-            final2 = final2 + str(links)
-
-
-    final1 = re.sub('<h1><a class="name-link" href="', " ", final1)
-    final1 = re.sub('</a></h1>', " ", final1)
-    final1 = re.sub(keyword, " ", final1)
-    final1 = re.sub('>', " ", final1)
-    final1 = re.sub('"', " ", final1)
-
-    final2 = re.sub('<p><a class="name-link" href="', " ", final2)
-    final2 = re.sub('</a></p>', " ", final2)
-    final2 = re.sub('>', " ", final2)
-    final2 = re.sub('"', " ", final2)
-    fin1 = final1.split()
-    fin2 = final2.split()
+    name_box = cop.find_all('p', attrs={'p': 'href'})  #this is used for all hrefs
+    for lins in cop.find_all('a', {'class':'name-link'}):   #this forloop searches for classlink to sift all hrefs
+        if keyword in lins.text:                            #uses keyword to find item
+            matcher = lins["href"]
+            for lines in cop.find_all("a", {'class':'name-link'}):
+                if colorway in lines.text:                  #uses color to find the color
+                    if matcher in lines["href"]:            # matches text
+                        print (matcher)
 
 
-    fin3 = set(fin1).intersection(fin2)
-    sfin3 = repr(fin3)
-    sfin3 = re.sub('set', "", sfin3)
-    sfin3 = sfin3.replace("[", "")
-    sfin3 = sfin3.replace("]", "")
-    sfin3 = sfin3.replace(")", "")
-    sfin3 = sfin3.replace("(", "")
-    sfin3 = sfin3.replace("'", "")
-    return SUPREME + sfin3
+########       Item Finder         #########################################################################################################################################################################
+
+
+def wordscrambler(cop, keyword, colorway):
+    for lins in cop.find_all('a', {'class':'name-link'}):
+        # if "http://www.supremenewyork.com" in lins["href"]:
+        #     results = requests.get(lins["href"])
+        #     print (results.content)
+        #     if keyword in results.title:
+        #         if colorway in results.title:
+        #             return (lins["href"])
+        # else:
+            link = "http://www.supremenewyork.com" + str(lins["href"])
+            #print (link)
+            results = requests.get(link)
+            #print (results.content)
+            while 'shop' not in str(results.content):
+                print ("waiting still")
+                sleep(0.1)
+                results = requests.get(link)
+            results = BeautifulSoup(results.text, "html.parser")
+            result = results.encode('ascii', "ignore")
+            #print (result)
+            if keyword in str(results.find("title")):       #& colorway in str(results.find("title"))
+                if colorway in str(results.find("title")):
+                    print (lins["href"])
+                    return (lins["href"])
+
+
+########       Session Id        #########################################################################################################################################################################
+
+
 def get_session_id(csrftoken): #look for session id
         csrf = "csrf-token"
-        for link in csrftoken.find_all("meta"): # what the thingyl #change to meta content
-             if csrf in str(link): #grab csrf token lmao
-                 gotcha = str(link)
-        csrf = gotcha
-        gotcha = re.sub('<meta content="', "", gotcha)
-        gotcha = re.sub('" name="csrf-token"/>', "", gotcha)
+        csrftok = csrftoken.find("meta",{'name':csrf})["content"]
+        return csrftok
 
-        return gotcha
 
-def Sizefinder(link, size): #simplified
+########       Size Code         #########################################################################################################################################################################
+
+
+def Sizefinder(target, size): #simplified s = size
+
     final1 = ""
-    captcha_page = requests.get(link)
+    captcha_page = requests.get(target)
+
+    while 'Supreme' not in str(captcha_page.content):
+        print ("waiting still")
+        sleep(0.1)
+        print (str(captcha_page.content))
+        captcha_page = requests.get(target)
+    print ("Entered Size")
+    print (size)
+
     soup = BeautifulSoup(captcha_page.content, "html.parser")
-    if size in "":
-        return soup.find("input",{"name":"size"})["value"]
-    else:
+    for action in soup.find_all('select'):
+        for actions in action.find_all('option'):
+            print(actions)
+            if size in actions:
+                size1 = actions['value']
+                return size1
+    if size == "Small":
+        size = "Medium"
         for action in soup.find_all('select'):
             for actions in action.find_all('option'):
+                print(actions)
                 if size in actions:
-                    return actions['value']
+                    size1 = actions['value']
+                    return size1
+    elif size == "Medium":
+        size = "Large"
+        for action in soup.find_all('select'):
+            for actions in action.find_all('option'):
+                print(actions)
+                if size in actions:
+                    size1 = actions['value']
+                    return size1
+    elif size == "Large":
+        size = "XLarge"
+        for action in soup.find_all('select'):
+            for actions in action.find_all('option'):
+                print(actions)
+                if size in actions:
+                    size1 = actions['value']
+                    return size1
+    if size == "XLarge":
+        size = "Small"
+        for action in soup.find_all('select'):
+            for actions in action.find_all('option'):
+                print(actions)
+                if size in actions:
+                    size1 = actions['value']
+                    return size1
 
+########       Style Code         #########################################################################################################################################################################
 
-def Stylecode(link): #style code
+def Stylecode(link): #style code s = style
     final1 = ""
     swag = ""
     captcha_page = requests.get(link)
+    while 'Supreme' not in str(captcha_page.content):
+        print ("waiting still")
+        sleep(0.1)
+        print (str(captcha_page.content))
+        captcha_page = requests.get(link)
+
     soup = BeautifulSoup(captcha_page.content, "html.parser")
 
     return soup.find(id="st")["value"]
 
 
-
-
-
+########      Last Cart Link         #########################################################################################################################################################################
 
 
 def atclink1(link,size5, style1, size): #final link to add to cart and simplified
     atclink = requests.get(link)
+    #print (atclink.content)
+
+    while 'Supreme' not in str(atclink.content):
+        print ("waiting still")
+        sleep(0.1)
+        #print (str(atclink.content))
+        atclink = requests.get(link)
+
     swag = ""
     soup = BeautifulSoup(atclink.content, "html.parser")
     for action in soup.find_all('form'):
         swag = action['action']
     return SUPREME + swag
+
+
 def quit():
-    global root
-    root.quit()
+        category = var.get()
+        size = var1.get()
+        keyword = keyword1.get()
+        colorwave = colorwave1.get()
+        fullname = fullname1.get()
+        email = email1.get()
+        tele = tele1.get()
+        address = address2.get()
+
+        adres1 = (SecAddress.get())
+        address1 = str(adres1)
+
+        zipcode = zipcode1.get()
+        city = city1.get()
+        state = state1.get()
+        creditcardtype = var2.get()
+        creditcard = creditcard1.get()
+        creditmonth = creditmonth1.get()
+        credityear = credityear1.get()
+        creditsec = creditsec1.get()
+        captcharesp = captcharesp1.get()
+        open('supremesave', 'w').close()
+
+        f = open('supremesave', 'r+')
+        array = [category, keyword, colorwave, size, fullname, email, tele, address,address1, zipcode, city, state, creditcardtype,creditcard, creditmonth, creditmonth, credityear, creditsec]
+
+        f.write(category + '\n')
+        f.write(keyword + '\n')
+        f.write(colorwave + '\n')
+        f.write(size + '\n')
+        f.write(fullname + '\n')
+        f.write(email + '\n')
+        f.write(tele + '\n')
+        f.write(address + '\n')
+        f.write(address1 + '\n')
+        f.write(zipcode + '\n')
+        f.write(city + '\n')
+        f.write(state + '\n')
+        f.write(creditcardtype + '\n')
+        f.write(creditcard + '\n')
+        f.write(creditmonth + '\n')
+        f.write(credityear + '\n')
+        f.write(creditsec + '\n')
+        f.write(captcharesp + '\n')
+
+
+        master.destroy()
+
 def change_dropdown(*args):
         print( tkvar.get() )
+
+def clear_text():
+    captcharesp1.delete(0, 'end')
+
 def cop():
+
+    timer1 = timer.get()
+    start = time.time()
+    lastidcookie = str(int(time.time()))
     category = var.get()
     size = var1.get()
     keyword = keyword1.get()
@@ -185,40 +325,78 @@ def cop():
     creditmonth = creditmonth1.get()
     credityear = credityear1.get()
     creditsec = creditsec1.get()
+    captcharesp = captcharesp1.get()
+
+    if "" not in timer1:
+        sleep(int(timer1))
 
     supreme = Categories(category)
     supreme = requests.get(supreme)
-    print "lol"
+
+    while 'Supreme' not in str(supreme.content):
+        print ("waiting still")
+        sleep(0.1)
+        supreme = requests.get(link)
+
     cop = BeautifulSoup(supreme.content, "html.parser")
-    link = cop.find_all("article")
-    print "error"
-    target =  keywordhunter(cop,keyword, colorwave) #look for things link
-    print target
 
-    size1 = Sizefinder(target,size) #look for things size finder
-    print size1
-    print 123
+    # link = cop.find_all("article")
 
-    style1 = Stylecode(target)
-    print style1
-    print 321
+    print ("Benchmark1: Item Finder")
+    target =  wordscrambler(cop,keyword, colorwave) #look for things link
+    try:
+        if "http://www.supremenewyork.com/" not in target:
+            target = "http://www.supremenewyork.com" + target
+        print (target)
+    except:
+        print ("out of stock")
 
-#################### THIS IS HOW TO CREATE CART COOKIE HOWEVER YOU NEED PURE CART TO REGISTER IT PROPERLY  #############################################################
-    # cookiecart = "1+item--"
-    # cookiecart = cookiecart + str(size1) + "%2C" + str(style1)
-    # cart = {'name':'cart', 'value': cookiecart}
-    # driver.add_cookie({'name':'cart', 'value': cookiecart, 'path': '/'})
-    #addy = fullname + '%7C' + address + '%7C' + address1 + '%7C' + city + '%7C' + state + '%7C' + zipcode + '%7C' + 'USA' + '%7C' + email + '%7C' + tele
-    #cart = {'name':'address', 'value': addy}
+    print ("Benchmark2: Size Finder")
+    sizearray = ['Small', 'Medium', 'Large', 'XLarge']#this is for size swap if ur size is out of stock only things with these sizes
 
 
-#################### BOT ACTIONS ARE FILLED HER  ##########################################################################################################################
+########       Multiprocess Size and Style         #########################################################################################################################################################################
 
-    driver = webdriver.Chrome('/Users/'+ username +'/Downloads/chromedriver')
+
+    try:
+        style1 = Stylecode(target)
+        size1 = Sizefinder(target,size)
+    except:
+        print("Style and Size are gone")
+
+
+
+
+    print(" ")
+    print("---------------       SIZE AND STYLE CODE       ---------------------------------------------------------------------------------------------------------")
+    print(" ")
+    print ("Style Code: ", str(style1))
+    print ("Size Code: ", str(size1))
+    print(" ")
+    print("------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print(" ")
+
+
+
+
+
+
+    driver.switch_to_window(main_window)
     driver.get(target)
+
+    try:
+        select = Select(driver.find_element_by_id("s"))
+        select.select_by_value(size1)
+    except:
+        print "size DNE"
+
+
+
     driver.find_element_by_css_selector("#add-remove-buttons > input").click()
-    driver.refresh()
+    time.sleep(.75)
     driver.get("https://www.supremenewyork.com/checkout")
+
+
     #driver.add_cookie({'name':'address', 'value': addy, 'path': '/'})
 
     driver.find_element_by_id("order_billing_name").send_keys(fullname)
@@ -241,22 +419,81 @@ def cop():
     driver.find_element_by_name("credit_card[rvv]").send_keys(creditsec)
 
 
-    driver.find_element_by_name
 
 
-    driver.find_element_by_name("credit_card[type]").send_keys(creditcardtype)
-    driver.find_element_by_name("credit_card[nlb]").send_keys(creditcard)
+    driver.find_element_by_id("cnb").send_keys(creditcard)
+    driver.find_element_by_name("credit_card[cnb]").send_keys(creditcard)
+    driver.find_element_by_id("credit_card_month").send_keys(creditmonth)
     driver.find_element_by_name("credit_card[month]").send_keys(creditmonth)
+    driver.find_element_by_id("credit_card_year").send_keys(credityear)
     driver.find_element_by_name("credit_card[year]").send_keys(credityear)
     driver.find_element_by_name("credit_card[rvv]").send_keys(creditsec)
+    driver.find_element_by_id("credit_card_rvv").send_keys(creditsec)
+
+    browser.find_element_by_id("order_terms").click()
+    checkboxes = driver.find_elements_by_xpath('//*[@id="order_terms"]')
+    checkboxes.click()
+
+    element = driver.find_elements_by_xpath('//*[@id="order_terms"]')
+    element.click();
+
+
+    payment = driver.find_elements_by_xpath('//*[@id="pay"]/input')
+    payment.click()
 
 
 
 
+
+    browser.find_element_by_css_selector('#pay > input')
+
+
+
+
+    return()
+
+
+
+
+
+    end = time.time()
+
+    elapsed = end - start
+    print (elapsed)
 
 if __name__ == '__main__':
 
     try:
+
+
+        driver = webdriver.Chrome('/Users/'+ 'jiojung' +'/Downloads/chromedriver')
+        driver.get('https://www.google.com/search?q=google.com+recaptcha+demo+google')
+        first_result = ui.WebDriverWait(driver, 15).until(lambda driver: driver.find_element_by_class_name('rc'))
+        first_link = first_result.find_element_by_tag_name('a')
+
+        # Save the window opener (current window, do not mistaken with tab... not the same)
+        main_window = driver.current_window_handle
+
+
+        # Open the link in a new tab by sending key strokes on the elementd
+        # Use: Keys.COMMAND + Keys.SHIFT + Keys.RETURN to open tab on top of the stack
+        first_link.send_keys(Keys.COMMAND + Keys.RETURN)
+
+        # Switch tab to the new tab, which we will assume is the next one on the right
+        driver.find_element_by_tag_name('body').send_keys(Keys.COMMAND + Keys.TAB)
+        driver.get('https://www.google.com')
+
+        # Put focus on current window which will, in fact, put focus on the current visible tab
+        driver.switch_to_window(main_window)
+        # driver.get('https://www.google.com/recaptcha/api2/demo')
+        # do whatever you have to do on this page, we will just got to sleep for now
+        sleep(2)
+
+        # Close current tab
+        # Put focus on current window which will be the window opener
+        driver.switch_to_window(main_window)
+
+
 
 
         for name in ('LOGNAME', 'USER', 'LNAME', 'USERNAME'):
@@ -317,7 +554,10 @@ if __name__ == '__main__':
         creditsec = f.readline()
         creditsec = creditsec.replace('\n', "")
 
-        print category, keyword, creditsec
+        captcharesp = f.readline()
+        captcharesp = captcharesp.replace('\n', "")
+
+
 
 
 
@@ -326,8 +566,8 @@ if __name__ == '__main__':
         COLOR = "snow2"
         pad = 10
         master.configure(background=COLOR)
-        master.geometry("325x525+30+30")
-        master.title("The Giver Bot")
+        master.geometry("325x600+30+30")
+        master.title("The Supper Bot")
         tk.Label(master, text="Category", bg=COLOR).grid(row=0, sticky = "W", ipadx=pad)
         tk.Label(master, text="Keyword", bg=COLOR).grid(row=1, sticky = "W", ipadx=pad)
         tk.Label(master, text="Colorwave", bg=COLOR).grid(row=2, sticky = "W", ipadx=pad)
@@ -345,6 +585,9 @@ if __name__ == '__main__':
         tk.Label(master, text="Credit Month", bg=COLOR).grid(row=15, sticky = "W", ipadx=pad)
         tk.Label(master, text="Credit Year", bg=COLOR).grid(row=16, sticky = "W", ipadx=pad)
         tk.Label(master, text="Credit SEC", bg=COLOR).grid(row=17, sticky = "W", ipadx=pad)
+        tk.Label(master, text="Timer", bg=COLOR).grid(row=18, sticky = "W", ipadx=pad)
+        tk.Label(master, text="Captcha Code", bg=COLOR).grid(row=20, sticky = "W", ipadx=pad)
+
 
 ######## FIRST COLUMN GUI ###########################################################################################
 
@@ -353,7 +596,7 @@ if __name__ == '__main__':
 
         var = tk.StringVar()
 
-        category1 =tk.OptionMenu(master, var,"jackets", "shirts", "tshirts", "sweaters", "sweatshirts", "pants", "shorts", "hats", "accessories", "shoes")
+        category1 =tk.OptionMenu(master, var,"jackets", "shirts", "tshirts", "sweaters", "sweatshirts", "pants", "shorts", "hats", "accessories", "shoes", "bags")
         var.set(category)
         category1.config(width=20, bg=COLOR)
         category1.grid(row=0, column=1)
@@ -367,7 +610,7 @@ if __name__ == '__main__':
         colorwave1.config(highlightbackground= COLOR)
 
         var1 = tk.StringVar()
-        size1 =tk.OptionMenu(master, var1,'Small', 'Medium', 'Large', 'XLarge')
+        size1 =tk.OptionMenu(master, var1,'' ,'S/M','L/XL','Small', 'Medium', 'Large', 'XLarge')
         var1.set(size)
         size1.config(width=20,bg=COLOR)
         size1.grid(row=3, column=1)
@@ -425,13 +668,22 @@ if __name__ == '__main__':
         creditsec1.config(highlightbackground= COLOR)
         creditsec1.insert(0,creditsec)
 
-        end = tk.Button(master, text="Exit", highlightbackground = COLOR, command=master.quit)
+        captcharesp1 = tk.Entry(master, textvariable = captcharesp)
+        captcharesp1.config(highlightbackground= COLOR)
+        captcharesp1.insert(0,captcharesp)
+
+        end = tk.Button(master, text="Exit", highlightbackground = COLOR, command = quit)
         end.config(width = 10)
-        end.pack()
 
         buy = tk.Button(master, text="Buy", highlightbackground = COLOR, command = cop) # this is to cop, create the function
         buy.config(width = 10)
-        buy.pack()
+
+        timer = tk.Entry(master)
+        timer.config(highlightbackground= COLOR)
+
+        captchaclearnbutton = tk.Button(master, text="Clear Captcha",highlightbackground = COLOR, command=clear_text)
+        captchaclearnbutton.config(width = 10)
+
 
 
         category1.grid(row=0, column=1)
@@ -451,13 +703,21 @@ if __name__ == '__main__':
         creditmonth1.grid(row=15, column=1)
         credityear1.grid(row=16, column=1)
         creditsec1.grid(row=17, column=1)
-        end.grid(row=18, column = 1)
-        buy.grid(row=18, column = 0)
+        timer.grid(row=18, column=1)
+        captcharesp1.grid(row=20, column = 1)
+        captchaclearnbutton.grid(row=21, column = 1)
+        end.grid(row=22, column = 1)
+        buy.grid(row=21, column = 0)
+
 
 ######## SECOND COLUMN GUI  ###########################################################################################
 
 
 ######## Main loop logic  ###########################################################################################
+        # master.attributes("-topmost", True)
+        master.lift()
+        master.attributes('-topmost',True)
+        master.after_idle(master.attributes,'-topmost',False)
 
         master.mainloop()
 
@@ -507,214 +767,11 @@ if __name__ == '__main__':
 
 
 
+
+
 ######## Data Organization  #################################################################################################################################################################################################################################################################################
 
-        #
-        # fullname = fullname.replace(" ","+" )
-        # print fullname
-        # address = address.replace(" ","+" )
-        # print address
-        # address1 = address1.replace(" ","+" )
-        # print address1
-        # city = city.replace(" ","+" )
-        # print city
-        # state = state.replace(" ","+" )
-        # print state
-        # email = email.replace("@","%40")
-        # print email
-        # addy = fullname + '%7C' + address + '%7C' + address1 + '%7C' + city + '%7C' + state + '%7C' + zipcode + '%7C' + 'USA' + '%7C' + email + '%7C' + tele
-        # print addy
-        #
-        #
-        # # Joshua+Jio%7C2+Buswell+St%7CApt+4%7CBoston%7CMA%7C02215%7CUSA%7Cjungjio%40yahoo.com%7C3106166650
-        #
-        #
-#
-#         supreme = Categories(category)
-#         supreme = requests.get(supreme)
-#         print "lol"
-#         cop = BeautifulSoup(supreme.content, "html.parser")
-#         link = cop.find_all("article")
-#         print "error"
-#         target =  keywordhunter(cop,keyword, colorwave) #look for things link
-#         print target
-#
-#         size1 = Sizefinder(target,size) #look for things size finder
-#         print size1
-#         print 123
-#
-#         style1 = Stylecode(target)
-#         print style1
-#         print 321
-#
-# #################### THIS IS HOW TO CREATE CART COOKIE HOWEVER YOU NEED PURE CART TO REGISTER IT PROPERLY  #############################################################
-#         # cookiecart = "1+item--"
-#         # cookiecart = cookiecart + str(size1) + "%2C" + str(style1)
-#         # cart = {'name':'cart', 'value': cookiecart}
-#         # driver.add_cookie({'name':'cart', 'value': cookiecart, 'path': '/'})
-#         addy = fullname + '%7C' + address + '%7C' + address1 + '%7C' + city + '%7C' + state + '%7C' + zipcode + '%7C' + 'USA' + '%7C' + email + '%7C' + tele
-#         cart = {'name':'address', 'value': addy}
-#
-#
-#         # category
-#         # size
-#         # keyword
-#         # colorwave
-#         # fullname
-#         # email
-#         # tele
-#         # address
-#         # adres1
-#         # address1
-#         # zipcode
-#         # city
-#         # state
-#         # creditcardtype
-#         # creditcard
-#         # creditmonth
-#         # credityear
-#         # creditsec
-#
-#         driver = webdriver.Chrome('/Users/'+ username +'/Downloads/chromedriver')
-#         driver.get(target)
-#         driver.find_element_by_css_selector("#add-remove-buttons > input").click()
-#         driver.refresh()
-#         driver.get("https://www.supremenewyork.com/checkout")
-#         #driver.add_cookie({'name':'address', 'value': addy, 'path': '/'})
-#
-#
-#
-#         driver.find_element_by_id("order_billing_name").send_keys(fullname)
-#         driver.find_element_by_id("order_email").send_keys(email)
-#         driver.find_element_by_id("order_tel").send_keys(tele)
-#         driver.find_element_by_name("order[billing_address]").send_keys(address)
-#         driver.find_element_by_name("order[billing_address_2]").send_keys(address1)
-#         driver.find_element_by_id("order_billing_zip").send_keys(zipcode)
-#         driver.find_element_by_id("order_billing_city").send_keys(city)
-#         driver.find_element_by_id("order_billing_state").send_keys(state)
-#
-#         driver.find_element_by_name("credit_card[nlb]").send_keys(creditcard)
-#
-#         select = Select(driver.find_element_by_id("credit_card_month"))
-#         select.select_by_value(creditmonth)
-#
-#         select = Select(driver.find_element_by_id("credit_card_year"))
-#         select.select_by_value(credityear)
-#
-#         driver.find_element_by_name("credit_card[rvv]").send_keys(creditsec)
-#
-#
-#         driver.find_element_by_name
-#
-#
-#         driver.find_element_by_name("credit_card[type]").send_keys(creditcardtype)
-#         driver.find_element_by_name("credit_card[nlb]").send_keys(creditcard)
-#         driver.find_element_by_name("credit_card[month]").send_keys(creditmonth)
-#         driver.find_element_by_name("credit_card[year]").send_keys(credityear)
-#         driver.find_element_by_name("credit_card[rvv]").send_keys(creditsec)
 
-
-
-
-
-        # destroy= requests.Session()
-        # destroyer = destroy.get(target) #starts the session
-        # csrftoken = BeautifulSoup(destroyer.content, "html.parser") #what he said ^
-        # token = get_session_id(csrftoken)
-        # print token
-        #if size in "SmallMediumLargeXLarge":
-        #atclink = atclink(target, size1,style1, size)
-        #if size in "678910111213":
-        #    atclink = atclink1(target, size1, style1, size)#for sneaker sizes
-        # destroy.cookies.get_dict()
-        #
-        # atclink = atclink1(target, size1,style1, size)
-        #
-        # print atclink
-        # {}
-        # headers1 = {'User-Agent' : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"}
-        # data1 = {'utf8': '%E2%9C%93',
-        #            'style': style1, 'size': size1,
-        #            'commit':commit1,
-        #            }
-        # d1 = OrderedDict([('utf8', '%E2%9C%93'),
-        #                 ('style', style1),
-        #                 ('size', size1),
-        #                 ('commit',commit1)])
-        #
-        # #X-CSRF-Token': token
-        # payload = {'type': 'submit', 'name': 'commit', 'value': 'add to cart', 'X-CSRF-Token': token}
-        #
-        # d = OrderedDict([('utf8', utf1),
-        # ('authenticity_token', token),
-        # ('order[billing_name', fullname),
-        # ('order[email]', email),
-        # ('order[tel]', tele),
-        # ('order[billing_address]', address),
-        # ('order[billing_address_2]', address1),
-        # ('order[billing_zip]', zipcode),
-        # ('order[billing_city]', city,),
-        # ('order[billing_state]', state),
-        # ('order[billing_country]', 'USA'),
-        # ('same_as_billing_address','1'),
-        # ('store_credit_id' , ''), #this is blank
-        # ('store_address', '1',),    #this is 1
-        # ('credit_card[type]',creditcardtype),
-        # ('credit_card[nlb]', creditcard),
-        # ('credit_card[month]',"03"),
-        # ('credit_card[year]',credityear),
-        # ('credit_card[rvv]',creditsec),
-        # ('order[terms]' ,'0'),
-        # ('order[terms]', '1') #delete ]) for captcha, //check box for terms
-        # ])
-        #
-        # #driver.findElement(By.name("userName")).sendKeys ("tutorial");
-        # cookies1 = {'_utmc' : _UTMC, '_gat' : _GAT, '__utmt': __UTMT }
-        # with requests.Session() as response:
-        #     cookie = response.cookies.get_dict()
-        #     {}
-        #     get_data = response.get(atclink, data = d1)
-        #     post_data = response.post(atclink, data=d1, headers = headers1)
-        #     cookies1 = response.cookies
-        #
-        #     for c in cookies1:
-        #         if 'cart' in c.name:
-        #             cart = {'name':'cart', 'value': c.value,
-        #             'path': '/'}
-        #         if '_supreme' in c.name:
-        #             sup_sesh = {'name':'_supreme_sess', 'value': c.value,
-        #             'path': '/'}
-        #     print cart
-        #     print sup_sesh
-        #     addy1 = {'name' : 'address',
-        #     'value': addy }
-        #
-        #
-        #
-        #     driver = webdriver.Chrome('/Users/'+ username +'/Downloads/chromedriver')
-        #
-        #     driver.get("http://www.supremenewyork.com/shop/cart")
-        #     driver.add_cookie(sup_sesh)
-        #     driver.add_cookie(cart)
-        #     driver.add_cookie(addy1)
-        #
-        #     driver.refresh()
-        #     driver.refresh()
-        #
-        #     link = driver.find_element_by_css_selector("a[href='https://www.supremenewyork.com/checkout']")
-        #     link.click()
-        #     driver.find_element_by_name("credit_card[type]").send_keys("Mastercard")
-        #     driver.find_element_by_id("cnb").send_keys(creditcard)
-        #     driver.find_element_by_id("credit_card_month").send_keys(creditmonth)
-        #     driver.find_element_by_id("credit_card_year").send_keys(credityear)
-        #     driver.find_element_by_id("vval").send_keys(creditsec)
-        #
-        #
-        #
-        #
-        #
-        #
-        #     #
         #     # driver.find_element_by_css_('order_terms').click()
         #     #
         #     #
@@ -731,7 +788,7 @@ if __name__ == '__main__':
         #     # driver.find_element_by_xpath("//*[@id='cart-cc']/fieldset/p[2]/label/div").click
         #     #
         #     #
-        #
+        #t
         #
         #
         #
