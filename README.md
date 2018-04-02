@@ -14,7 +14,10 @@ Bot needs a few things to get started up.
 
 
 # BYPASSING CAPTCHA
-Prior to pressing buy on the bot, when you run the code you will be prompted to 2 windows. Create a new tab on the popped up Chrome browser, and log into a valid google account. Then use the 2nd tab to solve captchas, so that Google can recognize you are a valid google id. After completing however many captchas you want, you can buy the items you want, when clicking buy.
+   1.) Prior to pressing buy on the bot, when you run the code you will be prompted to 2 windows. 
+   2.) Create a new tab on the popped up Chrome browser, and log into a valid google account. 
+   3.) Then use the 2nd tab to solve captchas, so that Google can recognize you are a valid google id. 
+   4.) After completing however many captchas you want, you can buy the items you want, when clicking buy.
 
 
 
