@@ -22,7 +22,8 @@ Bot needs a few things to get started up.
 
 
 
-# CURRENT ISSUES
+# CURRENT ISSUES / TODO
 
-Supreme is doing a good job tracking down bots, and as of right now this bot doesn't work.
-  
+[] Bypass current bot detection <br />
+[√] GUI <br />
+[-] MultiThreading <br />
